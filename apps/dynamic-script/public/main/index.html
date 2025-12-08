@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Main Page</title>
+    <style>
+        h1 {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Main Page</h1>
+    <div id="nav"></div>
+    <div class="container">
+        <div id="micro-app-slot"></div>
+    </div>
+
+    <script type="text/javascript">
+        class UtilsManagement {
+            constructor() {}
+
+            // 获取应用微服务
+            getAppMicros() {
+                return window
+                    .fetch('/app-micros', {
+                        method: 'post',
+                    })
+                    .then((res) => res.json())
+                    .catch((err) => console.error(err));
+            }
+
+            // 是否支持prefetch
+            isSupportPrefetch() {
+                const link = document.createElement('link');
+                const relList = link?.relList;
+                return relList && relList?.supports && relList.supports('prefetch');
+            }
+
+            // 预加载静态资源
+            prefetchStatic(href, as) {
+                if (!this.isSupportPrefetch()) return;
+                const $link = document.createElement('link');
+                $link.rel = 'prefetch';
+                $link.href = href;
+                $link.as = as;
+                document.head.appendChild($link);
+            }
+
+            // 加载脚本
+            loadScript({
+                script,
+                id,
+            }) {
+                return new Promise((resolve, reject) => {
+                    const $script = document.createElement('script');
+                    $script.src = script;
+                    $script.setAttribute('micro-script', id);
+                    $script.onload = resolve;
+                    $script.onerror = reject;
+                    document.body.appendChild($script);
+                })
+            }
+
+            // 加载样式
+            loadStyle({
+                style,
+                id,
+            }) {
+                return new Promise((resolve, reject) => {
+                    const $style = document.createElement('link');
+                    $style.rel = 'stylesheet';
+                    $style.href = style;
+                    $style.setAttribute('micro-style', id);
+                    $style.onload = resolve;
+                    $style.onerror = reject;
+                    document.head.appendChild($style);
+                });
+            }
+
+            // 移除样式
+            removeStyle({ id }) {
+                const $style = document.querySelector(`[micro-style=${id}]`);
+                if ($style) {
+                    $style?.parentNode?.removeChild($style);
+                }
+            }
+
+            // 是否已加载脚本
+            hasLoadedScript({ id }) {
+                const $script = document.querySelector(`[micro-script=${id}]`);
+                return !!$script;
+            }
+
+            // 是否已加载样式
+            hasLoadStyle({ id }) {
+                const $style = document.querySelector(`[micro-style=${id}]`);
+                return !!$style;
+            }
+        }
+    </script>
+
+    <script type="text/javascript">
+        class AppManagement extends UtilsManagement {
+            constructor() {
+                super();
+                this.init();
+            }
+
+            init() {
+                this.processMicroApps();
+                // this.createMicroAppsNav();
+                // this.hashChangeListener();
+            }
+
+            processMicroApps() {
+                this.getAppMicros().then((micros) => {
+                    console.log('0', micros);
+                    this.micros = micros;
+                    this.prefetchMicroAppsStatic();
+                    this.createMicroAppsNav();
+                    this.createMicroAppsNav();
+                    this.navClicklistener();
+                    this.hashChangeListener();
+                })
+            }
+
+            prefetchMicroAppsStatic() {
+                const prefetchMicros = this.micros.filter((micro) => micro.prefetch);
+                prefetchMicros.forEach((micro) => {
+                    micro.script && this.prefetchStatic(micro.script, 'script');
+                    micro.style && this.prefetchStatic(micro.style, 'style');
+                })
+            }
+
+            createMicroAppsNav() {
+                const fragment = new DocumentFragment();
+                this.micros.forEach((micro) => {
+                    const button = document.createElement('button');
+                    button.textContent = micro.name;
+                    button.id = micro.id;
+                    fragment.appendChild(button);
+                });
+                const nav = document.getElementById('nav');
+                nav.appendChild(fragment);
+            }
+
+            navClicklistener() {
+                const nv = document.getElementById('nav');
+                nv.addEventListener('click', (e) => {
+                    window.location.hash = e?.target?.id;
+                });
+            }
+
+            hashChangeListener() {
+                window.addEventListener('hashchange', () => {
+                    this.micros.forEach(async (micro) => {
+                        if (micro.id === window.location.hash.slice(1)) {
+                            console.time(`fetch micro ${micro.name} static`);
+                            micro?.style && !this.hasLoadStyle(micro) && (await this.loadStyle(micro));
+                            micro?.script && !this.hasLoadedScript(micro) && (await this.loadScript(micro));
+                            console.timeEnd(`fetch micro ${micro.name} static`);
+                            window?.[micro.mount]?.('#micro-app-slot');
+                        } else {
+                            this.removeStyle(micro);
+                            window?.[micro.unmount]?.();
+                        }
+                    });
+                });
+            }
+        }
+        new AppManagement();
+    </script>
+</body>
+</html>

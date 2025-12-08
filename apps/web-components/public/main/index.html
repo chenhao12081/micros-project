@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Components</title>
+    <style>
+        h1 {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Web Components</h1>
+    <div id="nav"></div>
+    <div class="container">
+        <div id="micro-app-slot"></div>
+    </div>
+
+    <script type="text/javascript">
+        class UtilsManager {
+            constructor() {}
+
+            getAppMicros() {
+                return window
+                    .fetch('app-micros', {
+                        method: 'post',
+                    })
+                    .then((res) => res.json())
+                    .catch((err) => console.error(err));
+            }
+
+            isSupportPrefetch() {
+                const link = document.createElement('link');
+                const relList = link?.relList;
+                return relList && relList?.supports && relList.supports('prefetch');
+            }
+
+            prefetchStatic(href, as) {
+                if (!this.isSupportPrefetch()) return;
+                const $link = document.createElement('link');
+                $link.rel = 'prefetch';
+                $link.href = href;
+                $link.as = as;
+                document.head.appendChild($link);
+            }
+
+            loadScript({ id, script }) {
+                return new Promise((resolve, reject) => {
+                    const $script = document.createElement('script');
+                    $script.src = script;
+                    $script.setAttribute('micro-script', id);
+                    $script.onload = resolve;
+                    $script.onerror = reject;
+                    document.body.appendChild($script);
+                });
+            }
+
+            loadStyle({ id, style }) {
+                return new Promise((resolve, reject) => {
+                    const $style = document.createElement('link');
+                    $style.rel = 'stylesheet';
+                    $style.href = style;
+                    $style.setAttribute('micro-style', id);
+                    $style.onload = resolve;
+                    $style.onerror = reject;
+                    document.head.appendChild($style);
+                });
+            }
+
+            removeStyle({ id }) {
+                const $style = document.querySelector(`[micro-style=${id}]`);
+                $style && $style?.parentNode?.removeChild($style);
+            }
+
+            hasLoadedScript({ id }) {
+                const $script = document.querySelector(`[micro-script=${id}]`);
+                return !!$script;
+            }
+
+            hasLoadStyle({ id }) {
+                const $style = document.querySelector(`[micro-style=${id}]`);
+                return !!$style;
+            }
+        }
+    </script>
+
+    <script type="text/javascript">
+        class AppManagement extends UtilsManager {
+            constructor() {
+                super();
+                this.init();
+            }
+
+            init() {
+                this.processMicroApps();
+                this.hashChangeListener();
+            }
+
+            processMicroApps() {
+                this.getAppMicros().then((micros) => {
+                    this.micros = micros;
+                    this.prefetchMicroAppsStatic();
+                    this.createMicroAppsNav();
+                    this.navClickListener();
+                    // this.hashChangeListener();
+                });
+            }
+
+            prefetchMicroAppsStatic() {
+                const prefetchMicros = this.micros.filter((micro) => micro.prefetch);
+                prefetchMicros.forEach((micro) => {
+                    micro.script && this.prefetchStatic(micro.script, 'script');
+                    micro.style && this.prefetchStatic(micro.style, 'style');
+                });
+            }
+
+            createMicroAppsNav() {
+                const fragment = new DocumentFragment();
+                this.micros.forEach((micro) => {
+                    const button = document.createElement('button');
+                    button.textContent = micro.name;
+                    button.id = micro.id;
+                    fragment.appendChild(button);
+                });
+                const nav = document.getElementById('nav');
+                nav.appendChild(fragment);
+            }
+
+            navClickListener() {
+                const nv = document.getElementById('nav');
+                nv.addEventListener('click', (e) => {
+                    window.location.hash = e?.target?.id;
+                });
+            }
+
+            hashChangeListener() {
+                const $slot = document.getElementById('micro-app-slot');
+
+                window.addEventListener('hashchange', () => {
+                    this.micros.forEach(async (micro) => {
+                        const $webcomponent = document.querySelector(`[micro-id=${micro.id}]`);
+
+                        if (micro.id === window.location.hash.slice(1)) {
+                            micro?.style && !this.hasLoadStyle(micro) && (await this.loadStyle(micro));
+                            micro?.script && !this.hasLoadedScript(micro) && (await this.loadScript(micro));
+                        
+                            if (!$webcomponent) {
+                                const $webcomponent = document.createElement(
+                                    micro.customElement,
+                                );
+                                $webcomponent.setAttribute('micro-id', micro.id);
+                                $slot.appendChild($webcomponent);
+                            } else {
+                                $webcomponent.style.display = 'block';
+                            }
+                        } else {
+                            this.removeStyle(micro);
+                            if ($webcomponent) {
+                                $webcomponent.style.display = 'none';
+                            }
+                        }
+                    });
+                });
+            }
+        }
+
+        new AppManagement();
+    </script>
+</body>
+</html>
