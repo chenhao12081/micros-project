@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>Hello Sandbox Script</h1>
+
+    <!-- 导航栏 -->
+    <div id="nav"></div>
+
+    <!-- 主应用内容区 -->
+    <div id="container"></div>
+
+    <script type="text/javascript">
+        // 隔离类
+        class MicroAppSandbox {
+            // 配置信息
+            options = null;
+            // iframe实现
+            iframe = null;
+            // iframe的window实例
+            iframeWindow = null;
+            // 是否执行过js
+            exec = false;
+
+            // 初始化
+            constructor(options) {
+                this.options = options;
+                this.iframe = this.createIframe();
+                this.iframeWindow = this.iframe.contentWindow;
+            }
+
+            // 创建iframe
+            createIframe() {
+                const { rootElm, id, url } = this.options;
+                const iframe = document.createElement('iframe');
+                const attrs = {
+                    src: 'about:blank',
+                    'app-id': id,
+                    'app-src': name,
+                    style: 'border: none; width: 100%; height: 100%;',
+                };
+                Object.keys(attrs).forEach(key => {
+                    iframe.setAttribute(key, attrs[key]);
+                });
+                rootElm.appendChild(iframe);
+                return iframe;
+            }
+
+            // 激活
+            active() {
+                this.iframe.style.display = 'block';
+                if (this.exec) return;
+                this.exec = true;
+                const scriptElement = this.iframeWindow.document.createElement('script');
+                scriptElement.textContent = this.options.scriptText;
+                this.iframeWindow.document.head.appendChild(scriptElement);
+            }
+
+            // 失活
+            inactive() {
+                this.iframe.style.display = 'none';
+            }
+
+            // 销毁实例
+            destroy() {
+                this.options = null;
+                this.exec = false;
+                if (this.iframe) {
+                    this.iframe.parentNode.removeChild(this.iframe);
+                }
+                this.iframe = null;
+            }
+        }
+
+        // 微应用管理
+        class MicroApp {
+            // 缓存在微应用的脚本
+            scriptText = '';
+            // 隔离实例
+            sandbox = null;
+            // 微应用挂载的根结点
+            rootElm = null;
+
+            constructor(rootElm, app) {
+                this.rootElm = rootElm;
+                this.app = app;
+            }
+
+            // 获取js文本（微应用服务需要支持跨域请求获取js文件）
+            async fetchScript(src) {
+                try {
+                    const res = await window.fetch(src);
+                    return await res.text();
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+
+            // 激活
+            async active() {
+                if (!this.scriptText) {
+                    this.scriptText = await this.fetchScript(this.app.script);
+                }
+                // 如果没有创建隔离实例，则实时创建
+                if (!this.sandbox) {
+                    this.sandbox = new MicroAppSandbox({
+                        rootElm: this.rootElm,
+                        scriptText: this.scriptText,
+                        id: this.app.id,
+                        url: this.app.script,
+                    });
+                }
+
+                this.sandbox.active();
+            } 
+
+            inactive() {
+                this.sandbox?.inactive();
+            }
+        }
+
+        class MicroApps {
+            apps = new Map();
+            rootElm = null;
+
+            constructor(rootElm, apps) {
+                this.rootELm = rootElm;
+                this.setAppMaps(rootElm, apps);
+            }
+
+            setAppMaps(rootElm, apps) {
+                apps.forEach((app) => {
+                    this.apps.set(app.id, new MicroApp(rootElm, app));
+                })
+            }
+
+            prefetchMicroApps() {}
+
+            activeApp(id) {
+                const app = this.apps.get(id);
+                app?.active();
+            }
+
+            // 失活微应用
+            inactiveApp(id) {
+                const app = this.apps.get(id);
+                app?.inactive();
+            }
+        }
+
+        class MainApp {
+            microApps = []
+            microAppsManager = null;
+
+            constructor() {
+                this.init();
+            }
+
+            async init() {
+                this.microApps = await this.fetchMicroApps();
+                this.createNav();
+                this.navClickListener();
+                this.hashChangeListener();
+                const $container = document.getElementById('container');
+                this.microAppsManager = new MicroApps(
+                    $container,
+                    this.microApps,
+                )
+            }
+
+            async fetchMicroApps() {
+                const res = await window.fetch('/app-micros', {
+                    method: 'post',
+                });
+
+                return res.json();
+            }
+
+            createNav() {
+                const fragment = new DocumentFragment();
+                this.microApps.forEach((app) => {
+                    const button = document.createElement('button');
+                    button.textContent = app.name;
+                    button.id = app.id;
+                    fragment.appendChild(button);
+                });
+
+                const nav = document.getElementById('nav');
+                nav.appendChild(fragment);
+            }
+
+            navClickListener() {
+                const $nav = document.getElementById('nav');
+                $nav.addEventListener('click', (e) => {
+                    window.location.hash = e?.target?.id;
+                });
+            }
+
+            hashChangeListener() {
+                window.addEventListener('hashchange', () => {
+                    // this.microAppsManager.activeApp(window.location.hash.slice(1));
+                    this.microApps.forEach((app) =>
+                        app?.id === window.location.hash.slice(1)
+                            ? this.microAppsManager.activeApp(app?.id)
+                            : this.microAppsManager.inactiveApp(app?.id)
+                    )
+                });
+            }
+        }
+
+        new MainApp();
+    </script>
+</body>
+</html>

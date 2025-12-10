@@ -20,6 +20,17 @@ importers:
         specifier: ^1.10.1
         version: 1.10.1
 
+  apps/iframe-sandbox-blank:
+    dependencies:
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
+      morgan:
+        specifier: ^1.10.1
+        version: 1.10.1
+
+  apps/web-components: {}
+
 packages:
 
   accepts@2.0.0:
