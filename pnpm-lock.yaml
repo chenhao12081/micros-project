@@ -20,6 +20,15 @@ importers:
         specifier: ^1.10.1
         version: 1.10.1
 
+  apps/iframe-sandbox:
+    dependencies:
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
+      morgan:
+        specifier: ^1.10.1
+        version: 1.10.1
+
   apps/iframe-sandbox-blank:
     dependencies:
       express:
@@ -30,6 +39,15 @@ importers:
         version: 1.10.1
 
   apps/web-components: {}
+
+  apps/webcomponents-shadowdom:
+    dependencies:
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
+      morgan:
+        specifier: ^1.10.1
+        version: 1.10.1
 
 packages:
 

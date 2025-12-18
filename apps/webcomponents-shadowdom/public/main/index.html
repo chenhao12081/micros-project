@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    h1 {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>Main</h1>
+  <div id="nav"></div>
+  <div class="container">
+    <div id="micro-app-slot"></div>
+  </div>
+
+  <script type="text/javascript">
+    class UtilManager {
+      constructor() {}
+
+      getMicroApps() {
+        return window
+          .fetch('/microapps', {
+            method: 'post',
+          })
+          .then((res) => res.json())
+          .catch((error) => {
+            console.error(error);
+          })
+      }
+
+      isSupportPrefetch() {
+        const link = document.createElement('link');
+        const relList = link?.relList;
+        return relList && relList?.supports && relList.supports('prefetch');
+      }
+
+      prefetchStatic(href, as) {
+        const $link = document.createElement('link');
+        $link.rel = 'prefetch';
+        $link.as = as;
+        $link.href = href;
+        document.head.appendChild($link);
+      }
+
+      loadScript({ script, id }) {
+        return new Promise((resolve, reject) => {
+          const $script = document.createElement('script');
+          $script.src = script;
+          $script.setAttribute('micro-script', id);
+          $script.onload = resolve;
+          $script.onerror = reject;
+          document.body.appendChild($script);
+        });
+      }
+
+      loadStyle({ style, id }) {
+        return new Promise((resolve, reject) => {
+          const $link = document.createElement('link');
+          $link.href = style;
+          $link.setAttribute('micro-style', id);
+          $link.rel = 'stylesheet';
+          $link.onload = resolve;
+          $link.onerror = reject;
+          // 动态 Script 方案
+          // document.body.appendChild($link);
+
+          const $webComponent = document.querySelector(`[micro-id=${id}]`);
+          const $shadowRoot = $webComponent?.shadowRoot;
+          $shadowRoot?.insertBefore($link, $shadowRoot.firstChild);
+        });
+      }
+
+      hasLoadScript({ id }) {
+        const $script = document.querySelector(`[micro-script=${id}]`);
+        return !!$script;
+      }
+    }
+  </script>
+
+  <script type="text/javascript">
+    class MicroAppManager extends UtilManager {
+      microApps = [];
+
+      constructor() {
+        super();
+        this.init();
+      }
+
+      init() {
+        this.processMicroApps();
+        this.navClickListener();
+        this.hashChangeListener();
+      }
+
+      processMicroApps() {
+        console.log('@0');
+        this.getMicroApps().then((res) => {
+          console.log('@res', res, Array.isArray(res));
+          this.microApps = res;
+          this.prefetchMicroAppStatic();
+          this.createMicroAppNav();
+        })
+      }
+
+      prefetchMicroAppStatic() {
+        const prefetchMicroApps = this.microApps.filter((it) => it.prefetch);
+        prefetchMicroApps?.forEach((microApp) => {
+          microApp?.script && this.prefetchStatic(microApp.script, 'script');
+          microApp?.style && this.prefetchStatic(microApp.style, 'style');
+        });
+      }
+
+      createMicroAppNav() {
+        const fragment = new DocumentFragment();
+        this.microApps.forEach((microApp) => {
+          const button = document.createElement('button');
+          button.textContent = microApp.name;
+          button.id = microApp.id;
+          fragment.appendChild(button);
+        });
+        const $nav = document.getElementById('nav');
+        $nav.appendChild(fragment);
+      }
+
+      navClickListener() {
+        const nav = document.getElementById('nav');
+        nav.addEventListener('click', (e) => {
+          window.location.hash = e?.target?.id;
+        });
+      }
+
+      hashChangeListener() {
+        const $slot = document.getElementById('micro-app-slot');
+
+        window.addEventListener('hashchange', () => {
+          console.log('@hashchange');
+          this.microApps.forEach(async (microApp) => {
+            const $webcomponent = document.querySelector(
+              `[micro-id=${microApp.id}]`,
+            );
+
+            if (microApp.id === window.location.hash.replace('#', '')) {
+              if (!$webcomponent) {
+                console.time(`fetch microapp ${microApp.name} static`);
+                microApp?.script &&
+                  !this.hasLoadScript(microApp) &&
+                  (await this.loadScript(microApp))
+
+                const $webcomponent = document.createElement(
+                  microApp.customElement,
+                );
+                console.log('@$webcomponent', $webcomponent);
+                $webcomponent.setAttribute('micro-id', microApp.id);
+                $slot.appendChild($webcomponent);
+
+                this.loadStyle(microApp);
+                console.timeEnd(`fetch microapp ${microApp.name} static`);
+              } else {
+                $webcomponent.style.display = 'block';
+              }
+            } else {
+              if ($webcomponent) {
+                $webcomponent.style.display = 'none';
+              }
+            }
+          });
+        });
+      }
+    }
+    new MicroAppManager();
+  </script>
+</body>
+</html>

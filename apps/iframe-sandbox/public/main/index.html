@@ -25,12 +25,27 @@
             iframeWindow = null;
             // 是否执行过js
             exec = false;
+            // iframe 加载延迟执行标识
+            iframeLoadDeferred = null;
 
             // 初始化
             constructor(options) {
                 this.options = options;
                 this.iframe = this.createIframe();
                 this.iframeWindow = this.iframe.contentWindow;
+                this.iframeLoadDeferred = this.deferred();
+                this.iframeWindow.onload = () => {
+                    this.iframeLoadDeferred.resolve();
+                }
+            }
+
+            deferred() {
+                const deferred = Object.create({});
+                deferred.promise = new Promise((resolve, reject) => {
+                    deferred.resolve = resolve;
+                    deferred.reject = reject;
+                });
+                return deferred;
             }
 
             // 创建iframe
@@ -38,7 +53,7 @@
                 const { rootElm, id, url } = this.options;
                 const iframe = document.createElement('iframe');
                 const attrs = {
-                    src: 'about:blank',
+                    src: 'blank.html',
                     'app-id': id,
                     'app-src': url,
                     style: 'border: none; width: 100%; height: 100%;',
@@ -51,9 +66,10 @@
             }
 
             // 激活
-            active() {
+            async active() {
                 this.iframe.style.display = 'block';
                 if (this.exec) return;
+                await this.iframeLoadDeferred.promise;
                 this.exec = true;
                 const scriptElement = this.iframeWindow.document.createElement('script');
                 scriptElement.textContent = this.options.scriptText;
@@ -73,6 +89,7 @@
                     this.iframe.parentNode.removeChild(this.iframe);
                 }
                 this.iframe = null;
+                this.iframeWindow = null;
             }
         }
 
