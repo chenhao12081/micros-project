@@ -1,5 +1,5 @@
 {
-  "name": "single-spa-npm",
+  "name": "npm-micro",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,10 +9,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.23.0",
-  "dependencies": {
-    "single-spa": "^6.0.3",
-    "vue": "^3.5.25",
-    "vue-router": "^4.6.4"
-  }
+  "packageManager": "pnpm@10.23.0"
 }

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+  <!-- Vue -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- Vue Router -->
+  <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
+  <!-- qiankun -->
+  <script src="https://unpkg.com/qiankun@2/dist/qiankun.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <h1>Main</h1>
+        <P>
+            <router-link to="/">Home</router-link>
+            <router-link to="/app1">app1</router-link>
+        </P>
+        <div id="micro-container"></div>
+    </div>
+    <script type="module" src="./src/app.js"></script>
+</body>
+</html>

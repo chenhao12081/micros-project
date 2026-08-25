@@ -1,0 +1,8 @@
+export const app = {
+    template: '<h1>{{ msg }}</h1>',
+    data() {
+        return {
+            msg: 'Hello World',
+        };
+    },
+};

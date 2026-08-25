@@ -1,18 +1,19 @@
 {
-  "name": "single-spa-npm",
+  "name": "vue-app-1",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack --mode=development"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.23.0",
   "dependencies": {
-    "single-spa": "^6.0.3",
     "vue": "^3.5.25",
-    "vue-router": "^4.6.4"
+    "webpack": "^5.104.1",
+    "webpack-cli": "^6.0.1"
   }
 }
